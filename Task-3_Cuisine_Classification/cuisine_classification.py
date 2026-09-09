@@ -51,11 +51,17 @@ FEATURE_COLS = [
 def load_data(path: str = DEFAULT_DATA_PATH) -> pd.DataFrame:
     """Load Zomato dataset CSV."""
     if not os.path.exists(path):
+        # First fallback – absolute Windows path
         alt_path = r"d:\projects\QPredict\data\uploads\Dataset.csv"
         if os.path.exists(alt_path):
             path = alt_path
         else:
-            raise FileNotFoundError(f"Dataset CSV not found at '{path}'.")
+            # Second fallback – Linux‑style mount path (common in containers)
+            alt_path2 = "/mount/src/QPredict/data/uploads/Dataset.csv"
+            if os.path.exists(alt_path2):
+                path = alt_path2
+            else:
+                raise FileNotFoundError(f"Dataset CSV not found at '{path}'. Please verify the dataset location.")
     return pd.read_csv(path)
 
 
