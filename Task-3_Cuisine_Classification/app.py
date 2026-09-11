@@ -17,6 +17,24 @@ from cuisine_classification import (
     run_pipeline, load_data, FEATURE_COLS, TOP_N_CUISINES, DEFAULT_DATA_PATH
 )
 
+# ── Resolve dataset path (works locally and on Streamlit Cloud) ────────────────
+def _resolve_data_path(requested: str) -> str | None:
+    """Return the first existing path from the candidate list, or None."""
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        requested,
+        os.path.join(_script_dir, "..", "data", "Dataset.csv"),
+        "/mount/src/cognify/data/Dataset.csv",
+        "/mount/src/data/Dataset.csv",
+        "/mount/src/cognify/QPredict/data/uploads/Dataset.csv",
+        "/mount/src/QPredict/data/uploads/Dataset.csv",
+    ]
+    for c in candidates:
+        resolved = os.path.abspath(c)
+        if os.path.exists(resolved):
+            return resolved
+    return None
+
 # ── Page Configuration ────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Task 3: Cuisine Classification",
@@ -73,15 +91,16 @@ st.sidebar.header("⚙️ Configuration")
 with st.sidebar.expander("⚙️ Advanced Data Settings", expanded=False):
     data_path = st.text_input("Dataset Path", value=DEFAULT_DATA_PATH)
 
-if not os.path.exists(data_path):
-    st.error(f"❌ Dataset file not found at: `{data_path}`")
+resolved_path = _resolve_data_path(data_path)
+if resolved_path is None:
+    st.error(f"❌ Dataset not found. Searched common locations including `{data_path}`")
     st.stop()
 
 @st.cache_data(show_spinner="Training Multi-Label Classifiers ...")
 def get_pipeline_results(path):
     return run_pipeline(path)
 
-results       = get_pipeline_results(data_path)
+results       = get_pipeline_results(resolved_path)
 overall_df    = results["overall_df"]
 per_label_dfs = results["per_label_dfs"]
 trained       = results["trained"]
@@ -89,7 +108,7 @@ scaler        = results["scaler"]
 encoders      = results["encoders"]
 mlb           = results["mlb"]
 
-raw_df = load_data(data_path)
+raw_df = load_data(resolved_path)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📊 Model Summary")
