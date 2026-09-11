@@ -28,8 +28,9 @@ from sklearn.metrics import (
 # 1. CONFIG & DATA LOADING
 # ──────────────────────────────────────────────
 
+# Shared dataset: <repo_root>/data/Dataset.csv
 DEFAULT_DATA_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "QPredict", "data", "uploads", "Dataset.csv")
+    os.path.join(os.path.dirname(__file__), "..", "data", "Dataset.csv")
 )
 
 TOP_N_CUISINES = 10
@@ -49,20 +50,27 @@ FEATURE_COLS = [
 
 
 def load_data(path: str = DEFAULT_DATA_PATH) -> pd.DataFrame:
-    """Load Zomato dataset CSV."""
-    if not os.path.exists(path):
-        # First fallback – absolute Windows path
-        alt_path = r"d:\projects\QPredict\data\uploads\Dataset.csv"
-        if os.path.exists(alt_path):
-            path = alt_path
-        else:
-            # Second fallback – Linux‑style mount path (common in containers)
-            alt_path2 = "/mount/src/QPredict/data/uploads/Dataset.csv"
-            if os.path.exists(alt_path2):
-                path = alt_path2
-            else:
-                raise FileNotFoundError(f"Dataset CSV not found at '{path}'. Please verify the dataset location.")
-    return pd.read_csv(path)
+    """Load Zomato dataset CSV with multiple fallback paths."""
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        path,
+        # Repo-root relative (works locally and on Streamlit Cloud)
+        os.path.join(_script_dir, "..", "data", "Dataset.csv"),
+        # Streamlit Cloud mount paths
+        "/mount/src/cognify/data/Dataset.csv",
+        "/mount/src/data/Dataset.csv",
+        # Legacy QPredict paths (kept for backwards compatibility)
+        "/mount/src/cognify/QPredict/data/uploads/Dataset.csv",
+        "/mount/src/QPredict/data/uploads/Dataset.csv",
+    ]
+    for candidate in candidates:
+        resolved = os.path.abspath(candidate)
+        if os.path.exists(resolved):
+            return pd.read_csv(resolved)
+    raise FileNotFoundError(
+        f"Dataset CSV not found. Tried paths:\n" +
+        "\n".join(f"  • {os.path.abspath(c)}" for c in candidates)
+    )
 
 
 # ──────────────────────────────────────────────
