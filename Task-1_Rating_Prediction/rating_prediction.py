@@ -49,7 +49,7 @@ def load_data(path: str = DEFAULT_DATA_PATH) -> pd.DataFrame:
     for candidate in candidates:
         resolved = os.path.abspath(candidate)
         if os.path.exists(resolved):
-            return pd.read_csv(resolved)
+            return pd.read_csv(resolved, encoding='utf-8')
     raise FileNotFoundError(
         f"Dataset CSV not found. Tried paths:\n" +
         "\n".join(f"  • {os.path.abspath(c)}" for c in candidates)
