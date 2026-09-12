@@ -43,49 +43,76 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── Custom Styling ────────────────────────────────────────────────────────────
-st.markdown("""
+ACCENT = "#7C3AED"
+ACCENT_SOFT = "#EDE9FE"
+GRADIENT = "linear-gradient(135deg, #1E293B 0%, #7C3AED 100%)"
+
+_CSS = """
 <style>
     .header-box {
-        background: linear-gradient(135deg, #1E293B 0%, #7C3AED 100%);
+        background: __GRADIENT__;
         padding: 1.5rem 2rem;
-        border-radius: 12px;
+        border-radius: 14px;
         color: white;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.4rem;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
     }
-    .header-title {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0;
+    .header-title { font-size: 2rem; font-weight: 800; margin: 0; }
+    .header-sub { font-size: 0.95rem; opacity: 0.92; margin-top: 0.35rem; }
+    .header-chip {
+        display: inline-block; background: rgba(255,255,255,0.16);
+        border: 1px solid rgba(255,255,255,0.28);
+        padding: 0.2rem 0.7rem; border-radius: 999px;
+        font-size: 0.78rem; font-weight: 600; margin-top: 0.6rem; margin-right: 0.4rem;
     }
-    .header-sub {
-        font-size: 0.95rem;
-        opacity: 0.9;
-        margin-top: 0.4rem;
+    .kpi-card {
+        border-radius: 12px; padding: 0.85rem 1.1rem;
+        border: 1px solid #E2E8F0;
+        border-left: 5px solid __ACCENT__;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        margin-bottom: 0.4rem;
     }
+    .kpi-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; font-weight: 700; }
+    .kpi-value { font-size: 1.5rem; font-weight: 800; color: #0F172A; margin-top: 0.1rem; }
+    .kpi-sub { font-size: 0.76rem; color: #94A3B8; }
+    .section-title { font-size: 1.15rem; font-weight: 800; color: #0F172A; margin: 1.1rem 0 0.9rem 0; }
+    .side-brand {
+        background: __GRADIENT__; color: white; padding: 1rem 1.1rem;
+        border-radius: 12px; margin-bottom: 1rem;
+    }
+    .side-brand-title { font-size: 1.05rem; font-weight: 800; }
+    .side-brand-sub { font-size: 0.75rem; opacity: 0.9; margin-top: 0.2rem; }
     .tag-badge {
-        display: inline-block;
-        background-color: #F3E8FF;
-        color: #6B21A8;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
+        display: inline-block; background-color: #F3E8FF;
+        color: #6B21A8; padding: 0.5rem 1rem; border-radius: 999px;
+        font-weight: 800; font-size: 0.95rem;
+        margin: 0.25rem 0.5rem 0.25rem 0;
+        border: 1px solid #E9D5FF;
     }
+    .top10-grid { margin-top: 1rem; }
 </style>
-""", unsafe_allow_html=True)
+""".replace("__ACCENT__", ACCENT).replace("__GRADIENT__", GRADIENT)
+st.markdown(_CSS, unsafe_allow_html=True)
 
 # ── Header Banner ─────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="header-box">
     <div class="header-title">🍜 Task 3: Multi-Label Cuisine Classification</div>
     <div class="header-sub">Multi-Label OneVsRest Classification (Logistic Regression & Random Forest) to predict top cuisine tags.</div>
+    <span class="header-chip">⚔️ OneVsRest</span>
+    <span class="header-chip">📏 StandardScaler</span>
+    <span class="header-chip">🏷️ 10 Cuisine Tags</span>
 </div>
 """, unsafe_allow_html=True)
 
 # ── Sidebar Configuration ─────────────────────────────────────────────────────
+st.sidebar.markdown("""
+<div class="side-brand">
+    <div class="side-brand-title">🍜 Cuisine Classifier</div>
+    <div class="side-brand-sub">Cognify · Task 3</div>
+</div>
+""", unsafe_allow_html=True)
+
 st.sidebar.header("⚙️ Configuration")
 
 with st.sidebar.expander("⚙️ Advanced Data Settings", expanded=False):
@@ -107,13 +134,42 @@ trained       = results["trained"]
 scaler        = results["scaler"]
 encoders      = results["encoders"]
 mlb           = results["mlb"]
+top_cuisines  = results["top_cuisines"]
 
 raw_df = load_data(resolved_path)
+
+best_model = overall_df["F1 (micro)"].idxmax()
+best_f1 = overall_df.loc[best_model, "F1 (micro)"]
+best_ham = overall_df["Hamming Loss"].min()
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📊 Model Summary")
 st.sidebar.metric("Target Cuisine Tags", TOP_N_CUISINES)
-st.sidebar.metric("Best Model (F1 micro)", "Random Forest (0.39)")
+st.sidebar.metric("Best Model (F1 micro)", f"{best_model} ({best_f1:.2f})")
+st.sidebar.metric("Best Hamming Loss", f"{best_ham:.4f}")
+
+# ── KPI Metric Cards ──────────────────────────────────────────────────────────
+k1, k2, k3, k4 = st.columns(4)
+k1.markdown(
+    f'<div class="kpi-card"><div class="kpi-label">Target Cuisine Tags</div>'
+    f'<div class="kpi-value">{TOP_N_CUISINES}</div>'
+    f'<div class="kpi-sub">multi-label classes</div></div>',
+    unsafe_allow_html=True)
+k2.markdown(
+    f'<div class="kpi-card"><div class="kpi-label">Best Model F1 (micro)</div>'
+    f'<div class="kpi-value">{best_f1:.3f}</div>'
+    f'<div class="kpi-sub">{best_model}</div></div>',
+    unsafe_allow_html=True)
+k3.markdown(
+    f'<div class="kpi-card"><div class="kpi-label">Best F1 (macro)</div>'
+    f'<div class="kpi-value">{overall_df["F1 (macro)"].max():.3f}</div>'
+    f'<div class="kpi-sub">{overall_df["F1 (macro)"].idxmax()}</div></div>',
+    unsafe_allow_html=True)
+k4.markdown(
+    f'<div class="kpi-card"><div class="kpi-label">Best Hamming Loss</div>'
+    f'<div class="kpi-value">{best_ham:.4f}</div>'
+    f'<div class="kpi-sub">lower is better</div></div>',
+    unsafe_allow_html=True)
 
 # ── Navigation Tabs ────────────────────────────────────────────────────────────
 tab_predict, tab_eval, tab_cuisines = st.tabs([
@@ -124,7 +180,7 @@ tab_predict, tab_eval, tab_cuisines = st.tabs([
 
 # ── TAB 1: INTERACTIVE PREDICTOR ─────────────────────────────────────────────
 with tab_predict:
-    st.subheader("🔮 Predict Cuisine Tags")
+    st.markdown('<div class="section-title">🔮 Predict Cuisine Tags</div>', unsafe_allow_html=True)
     st.caption(f"Input restaurant details to predict applicable tags among top {TOP_N_CUISINES} cuisines.")
 
     cities_list = sorted(raw_df["City"].dropna().unique().tolist())
@@ -144,7 +200,7 @@ with tab_predict:
         st.markdown("##### ⭐ Rating & Services")
         inp_rating = st.slider("Aggregate Rating", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
         inp_votes = st.number_input("Votes Count", min_value=0, max_value=50000, value=250, step=10)
-        
+
         st.markdown("<br>", unsafe_allow_html=True)
         cb1, cb2, cb3 = st.columns(3)
         with cb1:
@@ -174,26 +230,48 @@ with tab_predict:
             "Aggregate rating": inp_rating,
             "Votes": inp_votes,
         }
-        
+
         input_unscaled = pd.DataFrame([row_dict])[FEATURE_COLS]
         input_scaled = pd.DataFrame(scaler.transform(input_unscaled), columns=FEATURE_COLS)
 
-        st.markdown("### 🏷️ Model Predictions")
+        st.markdown('<div class="section-title">🏷️ Model Predictions</div>', unsafe_allow_html=True)
+        model_colors = {
+            "Logistic Regression": ("#3B82F6", "#DBEAFE", "#1D4ED8"),
+            "Random Forest": ("#7C3AED", "#EDE9FE", "#6B21A8"),
+        }
         res_cols = st.columns(len(trained))
         for r_col, (m_name, model_obj) in zip(res_cols, trained.items()):
             binary_pred = model_obj.predict(input_scaled)
             pred_labels = mlb.inverse_transform(binary_pred)[0]
+            base_color, bg_color, fg_color = model_colors.get(m_name, (ACCENT, ACCENT_SOFT, "#4C1D95"))
             with r_col:
-                st.markdown(f"#### {m_name}")
+                st.markdown(
+                    f'<div style="border:1px solid #E2E8F0;border-top:4px solid {base_color};'
+                    f'border-radius:12px;padding:1rem 1.2rem;background:#F8FAFC;'
+                    f'box-shadow:0 2px 8px rgba(15,23,42,0.06);">'
+                    f'<div style="font-size:0.85rem;font-weight:800;color:#64748B;'
+                    f'text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.6rem;">{m_name}</div>',
+                    unsafe_allow_html=True
+                )
                 if pred_labels:
                     for tag in pred_labels:
                         st.markdown(f'<span class="tag-badge">🍜 {tag}</span>', unsafe_allow_html=True)
                 else:
                     st.info("No primary cuisine tags triggered.")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="section-title">⚖️ Tag Coverage Comparison</div>', unsafe_allow_html=True)
+        cov_rows = []
+        for m_name, model_obj in trained.items():
+            binary_pred = model_obj.predict(input_scaled)
+            pred_labels = mlb.inverse_transform(binary_pred)[0]
+            cov_rows.append({"Model": m_name, "Predicted Tags": len(pred_labels), "Cuisines": ", ".join(pred_labels) if pred_labels else "—"})
+        cov_df = pd.DataFrame(cov_rows)
+        st.dataframe(cov_df, use_container_width=True)
 
 # ── TAB 2: OVERALL PERFORMANCE ────────────────────────────────────────────────
 with tab_eval:
-    st.subheader("📊 Classifier Benchmark Metrics")
+    st.markdown('<div class="section-title">📊 Classifier Benchmark Metrics</div>', unsafe_allow_html=True)
 
     st.dataframe(
         overall_df.style
@@ -215,18 +293,30 @@ with tab_eval:
 
 # ── TAB 3: PER-CUISINE BREAKDOWN & BIAS ───────────────────────────────────────
 with tab_cuisines:
-    st.subheader("🍽️ Per-Cuisine Performance & Class Bias")
+    st.markdown('<div class="section-title">🍽️ Per-Cuisine Performance & Class Bias</div>', unsafe_allow_html=True)
     sel_model = st.selectbox("Select Model", list(per_label_dfs.keys()), index=1)
     per_df = per_label_dfs[sel_model].reset_index()
 
-    fig_f1 = px.bar(
-        per_df.sort_values("F1", ascending=True),
-        x="F1", y="Cuisine", orientation="h",
-        color="F1", color_continuous_scale=["#EDE9FE", "#6D28D9"],
-        title=f"{sel_model} — F1 Score per Cuisine Tag"
-    )
-    fig_f1.update_layout(height=380, coloraxis_showscale=False, template="plotly_white")
-    st.plotly_chart(fig_f1, use_container_width=True)
+    l_col, r_col = st.columns(2)
+    with l_col:
+        fig_f1 = px.bar(
+            per_df.sort_values("F1", ascending=True),
+            x="F1", y="Cuisine", orientation="h",
+            color="F1", color_continuous_scale=["#EDE9FE", "#6D28D9"],
+            title=f"{sel_model} — F1 Score per Cuisine Tag"
+        )
+        fig_f1.update_layout(height=400, coloraxis_showscale=False, template="plotly_white")
+        st.plotly_chart(fig_f1, use_container_width=True)
+
+    with r_col:
+        fig_support = px.bar(
+            per_df.sort_values("Support", ascending=True),
+            x="Support", y="Cuisine", orientation="h",
+            color="Support", color_continuous_scale=["#FDE68A", "#D97706"],
+            title=f"{sel_model} — Sample Support (class imbalance)"
+        )
+        fig_support.update_layout(height=400, coloraxis_showscale=False, template="plotly_white")
+        st.plotly_chart(fig_support, use_container_width=True)
 
     st.markdown("#### ⚠️ Class Imbalance Analysis")
     rf_per = per_label_dfs["Random Forest"].reset_index()
